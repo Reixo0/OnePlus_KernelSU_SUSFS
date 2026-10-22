@@ -2161,8 +2161,14 @@ runs:
 
         case "$OP_BRANCH" in
           wild/sm8850|wild/sm8845)
-            echo "Applying BBG efisp abl whitelist control patch"
-            patch -p1 < "$KERNEL_PATCHES_FOLDER/common/bbg/0001-Enable-volume-input-to-enable-bbg-efisp-patch.patch"
+            # The menu calls handle_input(), which only exists in newer AnyKernel3.
+            # With the pinned AK3 it loops forever waiting for a volume key.
+            if grep -q "^handle_input()" tools/ak3-core.sh; then
+              echo "Applying BBG efisp abl whitelist control patch"
+              patch -p1 < "$KERNEL_PATCHES_FOLDER/common/bbg/0001-Enable-volume-input-to-enable-bbg-efisp-patch.patch"
+            else
+              echo "Skipping BBG efisp volume-key menu: AnyKernel3 has no handle_input()"
+            fi
           ;;
         esac
 
