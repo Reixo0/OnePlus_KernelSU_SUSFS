@@ -795,6 +795,8 @@ runs:
               download_url="${url%.git}/archive/refs/heads/${branch}.tar.gz"
           elif [[ "$url" == *"gitlab.com"* ]]; then
               download_url="${url%.git}/-/archive/${branch}/${repo_name}-${branch}.tar.gz"
+              # GitLab answers spoofed browser User-Agents with 403
+              aria2_headers=()
           else
               echo "::error::Unsupported host: $url"
               return 1
@@ -817,6 +819,17 @@ runs:
               sleep 5
               attempt=$((attempt + 1))
           done
+
+          echo "⚠️ Archive download failed, falling back to shallow git fetch..."
+          rm -rf "$repo_name"
+          if git init -q "$repo_name" \
+              && git -C "$repo_name" fetch -q --depth 1 "$url" "$branch" \
+              && git -C "$repo_name" checkout -q FETCH_HEAD; then
+              rm -rf "$repo_name/.git"
+              echo "✅ Success: $repo_name synced via git"
+              return 0
+          fi
+          rm -rf "$repo_name"
 
           echo "::error::All attempts failed for $url"
           return 1
